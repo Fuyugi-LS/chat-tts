@@ -1,0 +1,96 @@
+; tt2s.nsis — NSIS MUI2 installer for tdibam_t2s
+Unicode True
+
+; Anchor all relative paths to the project root (parent of installer/)
+!cd ".."
+
+!define APP_NAME      "tdibam_t2s"
+!define APP_VERSION   "1.0.0"
+!define APP_PUBLISHER "tdibam"
+!define APP_EXE       "tt2s.exe"
+!define UNINST_KEY    "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}"
+
+!include "MUI2.nsh"
+
+; ── Installer metadata ───────────────────────────────────────────────────────
+Name              "${APP_NAME} ${APP_VERSION}"
+OutFile           "dist\${APP_NAME}-${APP_VERSION}-setup.exe"
+InstallDir        "$APPDATA\${APP_NAME}"
+InstallDirRegKey  HKCU "${UNINST_KEY}" "InstallLocation"
+RequestExecutionLevel user          ; no admin needed — installs to %APPDATA%
+ShowInstDetails   show
+ShowUninstDetails show
+
+; ── MUI appearance ───────────────────────────────────────────────────────────
+!define MUI_ABORTWARNING
+!define MUI_ICON   "assets\icon.ico"
+!define MUI_UNICON "assets\icon.ico"
+!define MUI_FINISHPAGE_RUN      "$INSTDIR\${APP_EXE}"
+!define MUI_FINISHPAGE_RUN_TEXT "Launch ${APP_NAME}"
+
+; ── Installer pages ──────────────────────────────────────────────────────────
+!insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_DIRECTORY   ; lets user choose install path
+!insertmacro MUI_PAGE_INSTFILES
+!insertmacro MUI_PAGE_FINISH
+
+; ── Uninstaller pages ────────────────────────────────────────────────────────
+!insertmacro MUI_UNPAGE_CONFIRM
+!insertmacro MUI_UNPAGE_INSTFILES
+
+!insertmacro MUI_LANGUAGE "English"
+
+; ── Reinstall guard ──────────────────────────────────────────────────────────
+Function .onInit
+    ReadRegStr $R0 HKCU "${UNINST_KEY}" "InstallLocation"
+    StrCmp $R0 "" done
+        MessageBox MB_YESNO|MB_ICONQUESTION \
+            "${APP_NAME} is already installed at:$\n$R0$\n$\nReinstall?" \
+            IDYES done
+        Abort
+    done:
+FunctionEnd
+
+; ── Install section ──────────────────────────────────────────────────────────
+Section "Install" SecInstall
+    SetOutPath "$INSTDIR"
+    File "dist\tt2s.exe"
+    File "dist\notif_popup.exe"
+    File "assets\icon.ico"
+
+    ; Start Menu shortcuts
+    CreateDirectory "$SMPROGRAMS\${APP_NAME}"
+    CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" \
+                   "$INSTDIR\${APP_EXE}" "" "$INSTDIR\icon.ico" 0
+    CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall.lnk" \
+                   "$INSTDIR\uninstall.exe"
+
+    ; Write uninstaller
+    WriteUninstaller "$INSTDIR\uninstall.exe"
+
+    ; Add/Remove Programs registry entry (per-user, no admin)
+    WriteRegStr   HKCU "${UNINST_KEY}" "DisplayName"     "${APP_NAME} ${APP_VERSION}"
+    WriteRegStr   HKCU "${UNINST_KEY}" "DisplayVersion"  "${APP_VERSION}"
+    WriteRegStr   HKCU "${UNINST_KEY}" "Publisher"       "${APP_PUBLISHER}"
+    WriteRegStr   HKCU "${UNINST_KEY}" "InstallLocation" "$INSTDIR"
+    WriteRegStr   HKCU "${UNINST_KEY}" "UninstallString" '"$INSTDIR\uninstall.exe"'
+    WriteRegStr   HKCU "${UNINST_KEY}" "DisplayIcon"     "$INSTDIR\icon.ico"
+    WriteRegDWORD HKCU "${UNINST_KEY}" "NoModify"        1
+    WriteRegDWORD HKCU "${UNINST_KEY}" "NoRepair"        1
+SectionEnd
+
+; ── Uninstall section ────────────────────────────────────────────────────────
+Section "Uninstall"
+    Delete "$INSTDIR\tt2s.exe"
+    Delete "$INSTDIR\notif_popup.exe"
+    Delete "$INSTDIR\icon.ico"
+    Delete "$INSTDIR\uninstall.exe"
+    RMDir /r "$INSTDIR\logs"
+    RMDir "$INSTDIR"
+
+    Delete "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk"
+    Delete "$SMPROGRAMS\${APP_NAME}\Uninstall.lnk"
+    RMDir  "$SMPROGRAMS\${APP_NAME}"
+
+    DeleteRegKey HKCU "${UNINST_KEY}"
+SectionEnd
