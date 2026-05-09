@@ -1,4 +1,17 @@
+# ide
+.vscode
+.DS_Store
+
+# python
+.venv
 __pycache__
+*.pyc
+
+# runtime
+logs
+.cache
+
+# artifact
 build
 dist
-*.pyc
+release
